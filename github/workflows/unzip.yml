@@ -1,4 +1,4 @@
-name: Unzip ZIP
+name: Extract index.zip
 
 on:
   workflow_dispatch:
@@ -11,60 +11,34 @@ jobs:
       contents: write
 
     steps:
-      - name: Checkout repository
+      - name: Download repository
         uses: actions/checkout@v4
 
-      - name: Find ZIP file
-        shell: bash
+      - name: Extract index.zip
         run: |
-          echo "Searching for ZIP files..."
-
-          ZIP_FILE=$(find . -type f \( -iname "*.zip" \) \
-            -not -path "./.git/*" | head -n 1)
-
-          if [ -z "$ZIP_FILE" ]; then
-            echo "ERROR: No ZIP file found anywhere in the repository."
-            echo "Files in repository:"
-            find . -maxdepth 3 -type f
+          if [ ! -f "index.zip" ]; then
+            echo "ERROR: index.zip was not found!"
+            echo "Repository files:"
+            ls -la
             exit 1
           fi
 
-          echo "ZIP FOUND:"
-          echo "$ZIP_FILE"
+          mkdir -p index
 
-          echo "ZIP_FILE=$ZIP_FILE" >> "$GITHUB_ENV"
+          unzip -o "index.zip" -d "index"
 
-      - name: Extract ZIP
-        shell: bash
-        run: |
-          ZIP_NAME=$(basename "$ZIP_FILE")
-          ZIP_DIR=$(dirname "$ZIP_FILE")
-          FOLDER_NAME="${ZIP_NAME%.*}"
+          echo "DONE!"
+          echo "index.zip is still موجود."
+          echo "Extracted files:"
+          find index -maxdepth 3 -type f
 
-          OUTPUT_DIR="$ZIP_DIR/$FOLDER_NAME"
-
-          echo "ZIP: $ZIP_FILE"
-          echo "OUTPUT: $OUTPUT_DIR"
-
-          mkdir -p "$OUTPUT_DIR"
-
-          unzip -o "$ZIP_FILE" -d "$OUTPUT_DIR"
-
-          echo ""
-          echo "Extraction completed."
-          echo "ZIP remains untouched."
-
-      - name: Commit extracted files
-        shell: bash
+      - name: Save to GitHub
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-          git add -A
+          git add index
 
-          if git diff --cached --quiet; then
-            echo "No changes to commit."
-          else
-            git commit -m "Extract ZIP files"
-            git push
-          fi
+          git commit -m "Extract index.zip" || echo "Nothing to commit"
+
+          git push
